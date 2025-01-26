@@ -8,22 +8,24 @@
     "build": "tsc"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "dotenv": "^16.4.7",
-    "cors": "^2.8.5",
-    "mongoose": "^8.9.5",
     "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "body-parser": "^1.20.3"
+    "mongoose": "^8.9.5",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
-    "typescript": "^5.7.3",
-    "ts-node-dev": "^2.0.0",
-    "ts-node": "^10.9.2",
-    "@types/node": "^22.10.10",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/mongoose": "^5.11.96",
-    "@types/cors": "^2.8.17",
-    "nodemon": "^3.1.9"
+    "@types/node": "^22.10.10",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.7.3"
   }
 }
