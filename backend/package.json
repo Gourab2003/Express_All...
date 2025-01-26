@@ -1,0 +1,29 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node --experimental-specifier-resolution=node dist/server.js",
+    "dev": "nodemon --exec node --loader ts-node/esm src/server.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "dotenv": "^16.4.7",
+    "cors": "^2.8.5",
+    "mongoose": "^8.9.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "body-parser": "^1.20.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "ts-node-dev": "^2.0.0",
+    "ts-node": "^10.9.2",
+    "@types/node": "^22.10.10",
+    "@types/express": "^5.0.0",
+    "@types/mongoose": "^5.11.96",
+    "@types/cors": "^2.8.17",
+    "nodemon": "^3.1.9"
+  }
+}
