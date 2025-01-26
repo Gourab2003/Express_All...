@@ -2,6 +2,9 @@ import express from "express";
 import CORS from "cors";
 import { config } from "./config/environment";
 import Database from "./config/database";
+import authRoutes from "./routes/authRoutes";
+
+const API_PREFIX = '/api/v1';
 
 class Server {
     private app: express.Application;
@@ -25,6 +28,9 @@ class Server {
                 timestamp: new Date().toISOString(),
             });
         });
+
+        //! Auth routes
+        this.app.use(`${API_PREFIX}/auth`, authRoutes)
     }
 
     // Connect to the database

@@ -17,6 +17,7 @@ interface Config {
     mongoUri: string;
     nodeEnv: string;
     jwtSecret: string;
+    jwtSecretExpiry: string;
     corsOrigin: string;
 }
 
@@ -26,5 +27,6 @@ export const config: Config = {
     mongoUri: process.env.MONGODB_URI || 'mongodb+srv://...',
     nodeEnv: process.env.NODE_ENV || 'development',
     jwtSecret: process.env.JWT_SECRET || 'fallback_secret_key',
+    jwtSecretExpiry: process.env.JWT_EXPIRES_IN || '1h',
     corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:3000'
 }
