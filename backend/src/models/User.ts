@@ -1,6 +1,6 @@
-import mongoose, {Mongoose, Schema} from "mongoose";
+import mongoose, {Schema} from "mongoose";
 import bcrypt from 'bcryptjs';
-import { IUser, UserSchema } from "../interfaces/IUser";
+import { IUser } from "../interfaces/IUser";
 
 const userMongooseSchema = new Schema<IUser>({
     userName: {
@@ -32,8 +32,8 @@ const userMongooseSchema = new Schema<IUser>({
 
 //password hashing middlewere
 userMongooseSchema.pre('save', async function(next) {
+    const user = this as IUser;
     if(!this.isModified('password')) return next();
-
     try {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);

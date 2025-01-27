@@ -1,4 +1,3 @@
-import { promises } from 'dns'
 import { z } from 'zod'
 
 export const UserSchema = z.object({
