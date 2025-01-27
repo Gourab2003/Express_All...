@@ -100,6 +100,7 @@ class AuthController {
             res.status(200).json(
                 {
                     status: 'success',
+                    message: "Loged in successfully",
                     data: {
                         token,
                         user: {
@@ -122,9 +123,17 @@ class AuthController {
 
     async logout(req:Request, res:Response):Promise<void>{
         try {
-            
-        } catch (error) {
-            
+            res.clearCookie("token");
+            res.status(200).json({
+                status: "Success",
+                message: "Logged out successfully"
+            })
+        } catch (error:any) {
+            res.status(500).json({
+                status: "error",
+                message: "Logout failed",
+                error: error.message
+            })
         }
     }
 }
