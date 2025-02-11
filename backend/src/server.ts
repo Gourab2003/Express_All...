@@ -1,8 +1,10 @@
 import express from "express";
 import CORS from "cors";
+import cookieParser from 'cookie-parser'
 import { config } from "./config/environment";
 import Database from "./config/database";
 import authRoutes from "./routes/authRoutes";
+import { redis } from "./lib/redis";
 
 const API_PREFIX = '/api/v1';
 
@@ -20,11 +22,24 @@ class Server {
         this.app.use(CORS());
         this.app.use(express.json());
         this.app.use(express.urlencoded({ extended: true }));
+        this.app.use(cookieParser());
 
         // Health check endpoint
-        this.app.get('/api/health', (req, res) => {
+        this.app.get('/api/health', async(req, res) => {
+            let redisStatus = 'Unknown';
+            let dbStatus = 'Unknown';
+            // In your server.ts health check
+            try {
+                await redis.ping();
+                redisStatus = 'connected';
+            } catch (err) {
+                redisStatus = 'disconnected';
+                console.error('Redis connection check failed:', err);
+            }
             res.status(200).json({
                 status: 'healthy',
+                database: dbStatus,
+                redis: redisStatus,
                 timestamp: new Date().toISOString(),
             });
         });

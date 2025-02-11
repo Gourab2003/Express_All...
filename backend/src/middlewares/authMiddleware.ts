@@ -1,31 +1,33 @@
-import {Request, Response, NextFunction} from 'express';
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken'
 import { config } from '../config/environment';
-import { error } from 'console';
 
 
-interface UserPayload{
+interface UserPayload {
     id: string;
     role: string;
     iat: number;
     exp: number
 }
 declare global {
-    namespace Express{
-        interface Request{
+    namespace Express {
+        interface Request {
             user?: UserPayload
         }
     }
 }
+
 export const authenticate = async (
     req: Request,
     res: Response,
     next: NextFunction
-): Promise<void> =>{
+): Promise<void> => {
     try {
+        // console.log('object')
         const token = req.cookies.token;
 
-        if(!token){
+        console.log(token)
+        if (!token) {
             res.status(401).json({
                 status: "error",
                 message: "Authentication required. Please log in"
@@ -35,9 +37,9 @@ export const authenticate = async (
 
         try {
             const decoded = jwt.verify(token, config.jwtSecret) as UserPayload;
-            const currentTimestamp = Math.floor(Date.now()/1000);
+            const currentTimestamp = Math.floor(Date.now() / 1000);
 
-            if(decoded.exp && decoded.exp < currentTimestamp){
+            if (decoded.exp && decoded.exp < currentTimestamp) {
                 res.clearCookie("token", {
                     httpOnly: true,
                     secure: process.env.NODE_ENV === "production",
@@ -51,6 +53,7 @@ export const authenticate = async (
 
             // Attach user information to request object
             req.user = decoded;
+
             // Add security headers
             res.setHeader("X-Content-Type-Options", "nosniff");
             res.setHeader("X-Frame-Options", "DENY");
@@ -80,7 +83,7 @@ export const authenticate = async (
             }
             throw error;
         }
-    } catch (error:any) {
+    } catch (error: any) {
         res.status(500).json({
             status: "error",
             message: "An error occurred during authentication.",
