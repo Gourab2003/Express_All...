@@ -2,6 +2,9 @@ import mongoose, { Document, Schema, Model, Types } from "mongoose";
 import { IPost, IComment, IMeta } from "../interfaces/IBlog"
 import slugify from "slugify";
 import { addSummarizationJob } from "../lib/queue";
+import { logger } from "../utils/logger";
+import { APIError } from "../utils/errorHandler";
+
 
 interface IPostDocument extends IPost, Document {
     _id: Types.ObjectId;
@@ -19,6 +22,7 @@ interface IPostModel extends Model<IPostDocument> {
     findBySlug(slug: string): Promise<IPostDocument | null>;
     findByAuthor(authorId: string, options?: { status?: string, limit?: number, page?: number }): Promise<IPostDocument>;
     findRelated(postId: string, limit?: number): Promise<IPostDocument>;
+    updateWithSummary(postId: string, summary: string): Promise<void>;
 }
 
 const commentSchema = new Schema({
@@ -128,61 +132,92 @@ postSchema.index({ status: 1, createdAt: -1 });
 postSchema.index({ tags: 1 });
 
 postSchema.pre<IPostDocument>('save', async function (next) {
-    postSchema.pre('save', async function (next) {
-        try {
-            // Explicitly type 'this' as IPostDocument
-            const post = this as IPostDocument;
+    try {
+        const post = this as IPostDocument;
 
-            if (post.isModified('title')) {
-                const baseSlug = slugify(post.title, { lower: true, strict: true });
-                let slug = baseSlug;
-                let counter = 1;
+        // Title modification handling
+        if (post.isModified('title')) {
+            logger.info(`Generating slug for post ${post._id}`);
+            const baseSlug = slugify(post.title, { lower: true, strict: true });
+            let slug = baseSlug;
+            let counter = 1;
 
-                // Type assertion for the constructor
-                const PostModel = post.constructor as Model<IPostDocument>;
+            const PostModel = post.constructor as Model<IPostDocument>;
 
-                // Check for slug conflicts
-                while (await PostModel.findOne({ slug, _id: { $ne: post._id } })) {
-                    slug = `${baseSlug}-${counter}`;
-                    counter++;
-                }
-                post.slug = slug;
+            // Check for slug conflicts
+            while (await PostModel.findOne({ slug, _id: { $ne: post._id } })) {
+                slug = `${baseSlug}-${counter}`;
+                counter++;
             }
-
-            if (post.isModified('content')) {
-                const wordCount = post.content.split(/\s+/).length;
-                post.readingTime = Math.ceil(wordCount / 200);
-
-                // Add summarization job if excerpt is not set
-                if (!post.excerpt) {
-                    await addSummarizationJob(post._id.toString(), post.content);
-                }
-            }
-
-            next();
-        } catch (error) {
-            next(error as Error); // Pass the error to Mongoose
+            post.slug = slug;
+            logger.debug(`Generated slug: ${slug}`);
         }
-    });
+
+        // Content modification handling
+        if (post.isModified('content')) {
+            logger.info(`Updating reading time and scheduling summarization for post ${post._id}`);
+
+            // Calculate reading time
+            const wordCount = post.content.split(/\s+/).length;
+            post.readingTime = Math.ceil(wordCount / 200);
+
+            // Schedule summarization if needed
+            if (!post.excerpt) {
+                try {
+                    await addSummarizationJob(post._id.toString(), post.content);
+                    logger.info(`Scheduled summarization job for post ${post._id}`);
+                } catch (error) {
+                    logger.error(`Failed to schedule summarization for post ${post._id}:`, error);
+                    // Don't throw error here - we don't want to block post save if summarization fails
+                }
+            }
+        }
+
+        next();
+    } catch (error) {
+        logger.error('Error in post pre-save middleware:', error);
+        next(error instanceof Error ? error : new Error(String(error)));
+    }
 });
 
 
 postSchema.methods.addComment = async function (comment: Omit<IComment, 'createdAt'>) {
-    this.comments.push({ ...comment, createdAt: new Date() });
-    await this.save();
-};
-
-postSchema.methods.incrementViews = async function () {
-    this.meta.views++;
-    await this.save();
-};
-
-postSchema.methods.like = async function (userId: string) {
-    if (!this.likes.includes(userId)) {
-        this.likes.push(userId);
+    try {
+        this.comments.push({ ...comment, createdAt: new Date() });
         await this.save();
+        logger.info(`Added comment to post ${this._id}`);
+    } catch (error) {
+        logger.error(`Failed to add comment to post ${this._id}:`, error);
+        throw new APIError('Failed to add comment', 500);
     }
 };
+
+
+postSchema.methods.incrementViews = async function () {
+    try {
+        this.meta.views++;
+        await this.save({ timestamps: false }); // Prevent updating timestamps for view increments
+        logger.debug(`Incremented views for post ${this._id}`);
+    } catch (error) {
+        logger.error(`Failed to increment views for post ${this._id}:`, error);
+        throw new APIError('Failed to increment views', 500);
+    }
+};
+
+
+postSchema.methods.like = async function (userId: string) {
+    try {
+        if (!this.likes.includes(userId)) {
+            this.likes.push(userId);
+            await this.save({ timestamps: false });
+            logger.debug(`User ${userId} liked post ${this._id}`);
+        }
+    } catch (error) {
+        logger.error(`Failed to like post ${this._id}:`, error);
+        throw new APIError('Failed to like post', 500);
+    }
+};
+
 
 postSchema.methods.unlike = async function (userId: string) {
     this.likes = this.likes.filter((id: mongoose.Types.ObjectId) => id.toString() !== userId);
@@ -254,6 +289,26 @@ postSchema.statics.findRelated = async function (postId: string, limit: number =
         .limit(limit)
         .populate('author', 'name email')
         .sort({ createdAt: -1 });
+};
+
+postSchema.statics.updateWithSummary = async function (postId: string, summary: string): Promise<void> {
+    try {
+        const result = await this.findByIdAndUpdate(
+            postId,
+            { excerpt: summary },
+            { new: true, runValidators: true }
+        );
+
+        if (!result) {
+            logger.error(`Post ${postId} not found for summary update`);
+            throw new APIError('Post not found', 404);
+        }
+
+        logger.info(`Updated summary for post ${postId}`);
+    } catch (error) {
+        logger.error(`Failed to update summary for post ${postId}:`, error);
+        throw error instanceof APIError ? error : new APIError('Failed to update summary', 500);
+    }
 };
 
 // Create and export the model
