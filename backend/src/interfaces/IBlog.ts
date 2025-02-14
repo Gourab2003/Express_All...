@@ -1,4 +1,4 @@
-import {z} from 'zod';
+import {string, z} from 'zod';
 import { Types } from 'mongoose';
 
 /**
@@ -14,7 +14,7 @@ const ObjectId = z.string().refine(
  */
 
 export const CommentSchema = z.object({
-    user: z.instanceof(Types.ObjectId),
+    user: z.string(),
     content: z.string()
         .min(1, "Comment cannot be empty")
         .max(1000, "Comment is too long"),
