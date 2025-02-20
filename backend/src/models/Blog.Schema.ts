@@ -105,7 +105,7 @@ const postSchema = new Schema<IPostDocument>({
     },
     excerpt: {
         type: String,
-        maxLength: 200
+        maxLength: 100
     },
     readingTime: {
         type: Number,
@@ -133,50 +133,34 @@ postSchema.index({ tags: 1 });
 
 postSchema.pre<IPostDocument>('save', async function (next) {
     try {
-        const post = this as IPostDocument;
-
-        // Title modification handling
-        if (post.isModified('title')) {
-            logger.info(`Generating slug for post ${post._id}`);
-            const baseSlug = slugify(post.title, { lower: true, strict: true });
+        if (this.isModified('title')) {
+            const baseSlug = slugify(this.title, { lower: true, strict: true });
             let slug = baseSlug;
             let counter = 1;
-
-            const PostModel = post.constructor as Model<IPostDocument>;
-
-            // Check for slug conflicts
-            while (await PostModel.findOne({ slug, _id: { $ne: post._id } })) {
-                slug = `${baseSlug}-${counter}`;
-                counter++;
+            const PostModel = this.constructor as IPostModel;
+            while (await PostModel.findOne({ slug, _id: { $ne: this._id } })) {
+                slug = `${baseSlug}-${counter++}`;
             }
-            post.slug = slug;
+            this.slug = slug;
             logger.debug(`Generated slug: ${slug}`);
         }
 
-        // Content modification handling
-        if (post.isModified('content')) {
-            logger.info(`Updating reading time and scheduling summarization for post ${post._id}`);
+        if (this.isModified('content')) {
+            const wordCount = this.content.split(/\s+/).length;
+            this.readingTime = Math.ceil(wordCount / 200);
 
-            // Calculate reading time
-            const wordCount = post.content.split(/\s+/).length;
-            post.readingTime = Math.ceil(wordCount / 200);
+            const oldWordCount = this.isNew ? 0 : (this.content.split(/\s+/).length || 0);
+            const shouldReSummarize = Math.abs(wordCount - oldWordCount) > 50; // Threshold for re-summarization
 
-            // Schedule summarization if needed
-            if (!post.excerpt) {
-                try {
-                    await addSummarizationJob(post._id.toString(), post.content);
-                    logger.info(`Scheduled summarization job for post ${post._id}`);
-                } catch (error) {
-                    logger.error(`Failed to schedule summarization for post ${post._id}:`, error);
-                    // Don't throw error here - we don't want to block post save if summarization fails
-                }
+            if (!this.excerpt || shouldReSummarize) {
+                await addSummarizationJob(this._id.toString(), this.content);
+                logger.info(`Scheduled summarization job for post ${this._id}`);
             }
         }
-
         next();
     } catch (error) {
-        logger.error('Error in post pre-save middleware:', error);
-        next(error instanceof Error ? error : new Error(String(error)));
+        logger.error('Pre-save error:', error);
+        next(error instanceof Error ? error : new APIError('Pre-save failed', 500));
     }
 });
 
@@ -220,9 +204,10 @@ postSchema.methods.like = async function (userId: string) {
 
 
 postSchema.methods.unlike = async function (userId: string) {
-    this.likes = this.likes.filter((id: mongoose.Types.ObjectId) => id.toString() !== userId);
-    await this.save();
-}
+    this.likes = this.likes.filter((id: Types.ObjectId) => id.toString() !== userId);
+    await this.save({ timestamps: false });
+    logger.debug(`User ${userId} unliked post ${this._id}`);
+};
 
 postSchema.methods.updateMeta = async function (updates: Partial<IMeta>) {
     this.meta = { ...this.meta, ...updates };
