@@ -79,3 +79,4 @@ class RedisConnection {
 }
 
 export const redis = RedisConnection.getInstance();
+export { RedisConnection }
