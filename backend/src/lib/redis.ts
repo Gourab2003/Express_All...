@@ -1,5 +1,6 @@
 import { Redis, RedisOptions } from 'ioredis';
 import { config } from '../config/environment';
+import { logger } from '../utils/logger';
 
 class RedisConnection {
     private static instance: Redis;
@@ -23,26 +24,26 @@ class RedisConnection {
 
             RedisConnection.instance
                 .on('connect', () => {
-                    console.log('Redis: Connecting...');
+                    logger.info('Redis: Connecting...');
                     RedisConnection.isConnected = false;
                 })
                 .on('ready', () => {
-                    console.log('Redis: Connected');
+                    logger.info('Redis: Connected');
                     RedisConnection.isConnected = true;
                 })
                 .on('error', (err) => {
-                    console.error('Redis error:', err);
+                    logger.error('Redis: Connection error:', err);
                     RedisConnection.isConnected = false;
                 })
                 .on('end', () => {
-                    console.log('Redis: Disconnected');
+                    logger.warn('Redis: Connection closed');
                     RedisConnection.isConnected = false;
                 });
         }
         return RedisConnection.instance;
     }
 
-    public static async waitForConnection(timeout=10000): Promise<void> {
+    public static async waitForConnection(timeout = 10000): Promise<void> {
         if (RedisConnection.isConnected) return;
 
         return new Promise((resolve, reject) => {
@@ -62,9 +63,19 @@ class RedisConnection {
         });
     }
 
-    public static getStatus(): string {
-        return RedisConnection.isConnected ? 'connected' : 'disconnected';
+    public static async checkHealth(): Promise<boolean> {
+        try {
+            await RedisConnection.instance.ping();
+            return true;
+        } catch (error) {
+            logger.error('Redis connection check failed:', error);
+            return false;
+        }
     }
+    public static getStatus(): string {
+        return RedisConnection.isConnected ? 'Connected' : 'disconnected';
+    }
+
 }
 
 export const redis = RedisConnection.getInstance();

@@ -3,8 +3,6 @@ import Post from "../models/Blog.Schema";
 import { CreatePostSchema, UpdatePostSchema } from "../interfaces/IBlog";
 import { asyncHandler, APIError } from "../utils/errorHandler";
 import { logger } from "../utils/logger";
-import { stat } from "fs";
-
 
 class BlogController {
     /**

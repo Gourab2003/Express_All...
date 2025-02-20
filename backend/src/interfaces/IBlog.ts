@@ -1,4 +1,4 @@
-import {string, z} from 'zod';
+import {z} from 'zod';
 import { Types } from 'mongoose';
 
 /**
@@ -6,7 +6,7 @@ import { Types } from 'mongoose';
  */
 const ObjectId = z.string().refine(
     (val)=> Types.ObjectId.isValid(val),
-    (val)=> ({message: `${val} is not a valid objectId`})
+    (val)=> ({message:`Invalid MongoDb ObjectId: ${val}` })
 )
 
 /**
@@ -42,8 +42,7 @@ export const PostSchema = z.object({
     slug: z.string().optional(),
     tags: z.array(z.string().min(1).max(20)).default(() => []),
     status: z.enum(['Draft', 'Published']).default("Draft"),
-    featuredImage: z.string().url().optional(),
-    excerpt: z.string().max(200, 'Excerpt cannot exceed 200 characters').optional(),
+    featuredImage: z.string().url().regex(/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/, "Must be a valid image URL").optional(),    excerpt: z.string().max(200, 'Excerpt cannot exceed 200 characters').optional(),
     readingTime: z.number().int().nonnegative().optional(),
     likes: z.array(z.instanceof(Types.ObjectId)).default([]),
     comments: z.array(CommentSchema).default([]),
