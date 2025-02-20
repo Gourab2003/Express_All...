@@ -1,18 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken'
+import jwt from 'jsonwebtoken';
 import { config } from '../config/environment';
-
+import { APIError } from '../utils/errorHandler';
+import { logger } from '../utils/logger';
 
 interface UserPayload {
     id: string;
     role: string;
     iat: number;
-    exp: number
+    exp: number;
 }
+
 declare global {
     namespace Express {
         interface Request {
-            user?: UserPayload
+            user?: UserPayload;
         }
     }
 }
@@ -23,72 +25,49 @@ export const authenticate = async (
     next: NextFunction
 ): Promise<void> => {
     try {
-        // console.log('object')
         const token = req.cookies.token;
-
-        console.log(token)
         if (!token) {
-            res.status(401).json({
-                status: "error",
-                message: "Authentication required. Please log in"
-            });
-            return
-        };
+            throw new APIError('Authentication required. Please log in', 401);
+        }
 
         try {
             const decoded = jwt.verify(token, config.jwtSecret) as UserPayload;
             const currentTimestamp = Math.floor(Date.now() / 1000);
 
             if (decoded.exp && decoded.exp < currentTimestamp) {
-                res.clearCookie("token", {
+                res.clearCookie('token', {
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === "production",
-                    sameSite: "strict",
-                })
-                res.status(401).json({
-                    status: "error",
-                    message: "Session expired. Please login first"
-                })
-            };
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                });
+                throw new APIError('Session expired. Please log in again', 401);
+            }
 
-            // Attach user information to request object
             req.user = decoded;
 
             // Add security headers
-            res.setHeader("X-Content-Type-Options", "nosniff");
-            res.setHeader("X-Frame-Options", "DENY");
-            res.setHeader("X-XSS-Protection", "1; mode=block");
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('X-Frame-Options', 'DENY');
+            res.setHeader('X-XSS-Protection', '1; mode=block');
 
             next();
         } catch (error) {
-            res.clearCookie("token", {
+            res.clearCookie('token', {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
             });
-            if (error instanceof jwt.JsonWebTokenError) {
-                res.status(401).json({
-                    status: "error",
-                    message: "Invalid token. Please log in again.",
-                });
-                return
-            }
 
-            if (error instanceof jwt.TokenExpiredError) {
-                res.status(401).json({
-                    status: "error",
-                    message: "Session expired. Please log in again.",
-                });
-                return
+            if (error instanceof jwt.JsonWebTokenError) {
+                throw new APIError('Invalid token. Please log in again', 401);
             }
-            throw error;
+            if (error instanceof jwt.TokenExpiredError) {
+                throw new APIError('Session expired. Please log in again', 401);
+            }
+            throw error; // Rethrow unexpected errors
         }
-    } catch (error: any) {
-        res.status(500).json({
-            status: "error",
-            message: "An error occurred during authentication.",
-            error: process.env.NODE_ENV === "development" ? error.message : undefined,
-        });
-        return
+    } catch (error) {
+        logger.error('Authentication error:', error);
+        next(error); // Pass to errorHandler instead of sending response
     }
-}
+};
