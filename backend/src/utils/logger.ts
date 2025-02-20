@@ -1,86 +1,55 @@
 import winston, { format, transports, LoggerOptions } from "winston";
+import DailyRotateFile from "winston-daily-rotate-file";
 import fs from "fs";
 import path from "path";
-import { config } from "../config/environment"; // Ensure `nodeEnv` is used correctly
+import { config } from "../config/environment";
 
-// Ensure logs directory exists
-const logDir = path.join(__dirname, "..", "logs");
-if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir);
-}
+const logDir = config.LOG_DIR || path.join(__dirname, "..", "logs");
+if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
 
-// Define log levels
-const levels = {
-    error: 0,
-    warn: 1,
-    info: 2,
-    http: 3,
-    debug: 4,
-};
-
-// Define colors
-const colors = {
-    error: "red",
-    warn: "yellow",
-    info: "green",
-    http: "magenta",
-    debug: "white",
-};
-
-// Apply colors to Winston
+const levels = { error: 0, warn: 1, info: 2, http: 3, debug: 4 };
+const colors = { error: "red", warn: "yellow", info: "green", http: "magenta", debug: "white" };
 winston.addColors(colors);
 
-// Set log level based on environment
 const logLevel = config.nodeEnv === "development" ? "debug" : "info";
 
-// Define log formats
 const developmentFormat = format.combine(
     format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     format.colorize({ all: true }),
-    format.printf(({ timestamp, level, message, stack }: winston.Logform.TransformableInfo) =>
-        stack
-            ? `${timestamp} ${level}: ${message} \nStack: ${stack}`
-            : `${timestamp} ${level}: ${message}`
+    format.printf(({ timestamp, level, message, stack }) =>
+        stack ? `${timestamp} ${level}: ${message} \nStack: ${stack}` : `${timestamp} ${level}: ${message}`
     )
 );
 
-const productionFormat = format.combine(
-    format.timestamp(),
-    format.json()
-);
+const productionFormat = format.combine(format.timestamp(), format.json());
 
-// Logger configuration
 const loggerOptions: LoggerOptions = {
     level: logLevel,
     levels,
     format: config.nodeEnv === "development" ? developmentFormat : productionFormat,
     transports: [
         new transports.Console(),
-
-        new transports.File({
-            filename: path.join(logDir, "error.log"),
+        new DailyRotateFile({
+            filename: path.join(logDir, "error-%DATE%.log"),
             level: "error",
-            maxsize: 5 * 1024 * 1024, // 5MB
-            maxFiles: 5,
+            maxSize: "5m",
+            maxFiles: "14d",
+            datePattern: "YYYY-MM-DD"
         }),
-
-        new transports.File({
-            filename: path.join(logDir, "combined.log"),
-            maxsize: 5 * 1024 * 1024, // 5MB
-            maxFiles: 5,
-        }),
+        new DailyRotateFile({
+            filename: path.join(logDir, "combined-%DATE%.log"),
+            maxSize: "5m",
+            maxFiles: "14d",
+            datePattern: "YYYY-MM-DD"
+        })
     ],
-    exitOnError: false,
+    exitOnError: false
 };
 
-// Create Winston logger
 const logger = winston.createLogger(loggerOptions);
 
-// Stream for Morgan logging
 const stream = {
-    write: (message: string) => {
-        logger.http(message.trim());
-    },
+    write: (message: string) => logger.http(message.trim())
 };
 
 export { logger, stream };

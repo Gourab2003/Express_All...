@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import express, { ErrorRequestHandler } from 'express';
 import { logger } from './logger';
 
 // Custom error class for API errors
@@ -15,67 +15,35 @@ export class APIError extends Error {
 }
 
 // Error handler middleware
-export const errorHandler = (
-    err: Error,
-    req: Request,
-    res: Response,
-    next: NextFunction
-) => {
+export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
+    const sanitizedBody = { ...req.body, password: undefined, token: undefined };
     if (err instanceof APIError) {
-        // Log operational errors
-        logger.warn({
-            message: err.message,
-            statusCode: err.statusCode,
-            path: req.path,
-            method: req.method,
-            body: req.body
-        });
-
-        return res.status(err.statusCode).json({
+        logger.warn({ message: err.message, statusCode: err.statusCode, path: req.path, method: req.method, body: sanitizedBody });
+        res.status(err.statusCode).json({
             status: 'error',
-            message: err.message
+            message: err.message,
+            ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+        });
+    } else {
+        logger.error({ message: err.message, stack: err.stack, path: req.path, method: req.method, body: sanitizedBody });
+        res.status(500).json({
+            status: 'error',
+            message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+            ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
         });
     }
-
-    // Programming or other unknown errors
-    logger.error({
-        message: err.message,
-        stack: err.stack,
-        path: req.path,
-        method: req.method,
-        body: req.body
-    });
-
-    // Don't leak error details in production
-    return res.status(500).json({
-        status: 'error',
-        message: process.env.NODE_ENV === 'production'
-            ? 'Internal server error'
-            : err.message
-    });
+    // No explicit return; res.json() completes the response
 };
 
-// Async error wrapper to avoid try-catch blocks
 export const asyncHandler = (fn: Function) => {
-    return (req: Request, res: Response, next: NextFunction) => {
+    return (req: express.Request, res: express.Response, next: express.NextFunction) =>
         Promise.resolve(fn(req, res, next)).catch(next);
-    };
 };
 
-// Common error types
 export const CommonErrors = {
-    NotFound: (resource: string) =>
-        new APIError(`${resource} not found`, 404),
-
-    Unauthorized: () =>
-        new APIError('Unauthorized access', 401),
-
-    BadRequest: (message: string) =>
-        new APIError(message, 400),
-
-    ValidationError: (message: string) =>
-        new APIError(message, 422),
-
-    Forbidden: () =>
-        new APIError('Forbidden access', 403)
+    NotFound: (resource: string) => new APIError(`${resource} not found`, 404),
+    Unauthorized: () => new APIError('Unauthorized access', 401),
+    BadRequest: (message: string) => new APIError(message, 400),
+    ValidationError: (message: string) => new APIError(message, 422),
+    Forbidden: () => new APIError('Forbidden access', 403)
 };
