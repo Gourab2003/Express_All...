@@ -43,6 +43,11 @@ class PostQueue {
         }
     }
 
+    public static async getJobStatus(postId: string): Promise<string> {
+        const queue = PostQueue.getInstance();
+        const job = await queue.getJob(`summarize-${postId}`);
+        return job ? job.getState() : 'not-found';
+    }
 
     public static async cleanup(): Promise<void> {
         if (PostQueue.instance) {
