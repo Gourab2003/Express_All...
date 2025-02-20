@@ -1,6 +1,6 @@
 import { Worker, Job, WorkerOptions } from "bullmq";
-import { redis } from "../lib/redis";
-import { pipeline } from "@xenova/transformers";
+import { redis, RedisConnection } from "../lib/redis";
+import { pipeline, Pipeline } from "@xenova/transformers";
 import { logger } from "../utils/logger";
 import Post from "../models/Blog.Schema";
 import { APIError } from "../utils/errorHandler";
@@ -17,12 +17,15 @@ class SummarizerWorker {
 
     private async initialize() {
         try {
+            if (!await RedisConnection.checkHealth()) {
+                throw new Error('Redis not available');
+            }
             logger.info('Initializing summarization pipeline...');
             this.summarizationPipeline = await pipeline('summarization', 'Xenova/distilbart-cnn-12-6');
 
             const workerOptions: WorkerOptions = {
                 connection: redis,
-                concurrency: 1,
+                concurrency: 2,
                 removeOnComplete: {
                     count: 1000
                 },
@@ -50,6 +53,7 @@ class SummarizerWorker {
 
                         const summary = (summaryResult as any)[0]?.summary_text || 'No summary generated.';
 
+                        if(!summary) throw new APIError(`No summary generated for job ${job.id}`, 500)
                         // Update the post with the generated summary
                         await Post.updateWithSummary(postId, summary);
 
@@ -57,7 +61,7 @@ class SummarizerWorker {
                         return { summary, postId };
                     } catch (error) {
                         logger.error(`Summarization failed for job ${job.id}:`, error);
-                        throw error;
+                        throw new APIError(`Summarization failed for post ${postId}`, 500);
                     }
                 },
                 workerOptions
@@ -66,7 +70,7 @@ class SummarizerWorker {
             this.setupEventListeners();
         } catch (error) {
             logger.error('Worker initialization failed:', error);
-            throw error;
+            throw new APIError('Failed to initialize worker', 500);;
         }
     }
 
@@ -87,7 +91,7 @@ class SummarizerWorker {
     }
 
     public async shutdown() {
-        console.log('🛑 Gracefully shutting down worker...');
+        // console.log('🛑 Gracefully shutting down worker...');
         if (this.worker) {
             await this.worker.close();
         }
