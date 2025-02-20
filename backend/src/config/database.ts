@@ -1,14 +1,13 @@
 import mongoose from "mongoose";
 import { config } from "./environment";
+import { logger } from "../utils/logger";
 
 class DatabaseConnection {
-    // Singleton pattern ensures only one database connection
     private static instance: DatabaseConnection;
     private connection: typeof mongoose | null = null;
 
-    private constructor() { } // Private constructor prevents direct instantiation
+    private constructor() { }
 
-    // Method to get the single instance of the class
     public static getInstance(): DatabaseConnection {
         if (!DatabaseConnection.instance) {
             DatabaseConnection.instance = new DatabaseConnection();
@@ -16,40 +15,47 @@ class DatabaseConnection {
         return DatabaseConnection.instance;
     }
 
-    // Establish database connection
     public async connect(): Promise<void> {
         try {
             this.connection = await mongoose.connect(config.mongoUri);
 
-            // Event listeners for connection status
             mongoose.connection.on('connected', () => {
-                console.log(`MongoDB connection successful: ${config.mongoUri}`);
+                logger.info(`MongoDB connection successful: ${config.mongoUri}`);
             });
 
             mongoose.connection.on('error', (err) => {
-                console.error(`MongoDB connection error: ${err}`);
+                logger.error(`MongoDB connection error: ${err}`);
             });
 
             mongoose.connection.on('disconnected', () => {
-                console.error('Lost MongoDB connection');
+                logger.warn('Lost MongoDB connection');
             });
         } catch (error) {
-            console.error('Failed to connect to MongoDB', error);
+            logger.error('Failed to connect to MongoDB:', error);
             process.exit(1);
         }
     }
 
-    // Disconnect from the database
     public async disconnect(): Promise<void> {
         if (this.connection) {
             await mongoose.connection.close();
-            console.log('MongoDB connection closed');
+            logger.info('MongoDB connection closed');
+            this.connection = null;
         }
     }
 
-    // Setup graceful shutdown handlers
+    public getStatus(): string {
+        if (!this.connection) return 'disconnected';
+        switch (mongoose.connection.readyState) {
+            case 0: return 'disconnected';
+            case 1: return 'connected';
+            case 2: return 'connecting';
+            case 3: return 'disconnecting';
+            default: return 'unknown';
+        }
+    }
+
     public setupGracefulShutdown(): void {
-        // Handle process interruption signals
         process.on('SIGINT', async () => {
             await this.disconnect();
             process.exit(1);
@@ -62,4 +68,5 @@ class DatabaseConnection {
     }
 }
 
-export default DatabaseConnection.getInstance();
+const Database = DatabaseConnection.getInstance();
+export default Database;

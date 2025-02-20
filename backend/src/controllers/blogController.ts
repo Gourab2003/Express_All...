@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import Post from "../models/Blog.Schema";
-import { CreatePostSchema, UpdatePostSchema } from "../interfaces/IBlog";
+import { CreatePostSchema, UpdatePostSchema, CommentInputSchema } from "../interfaces/IBlog";
 import { asyncHandler, APIError } from "../utils/errorHandler";
 import { logger } from "../utils/logger";
 
@@ -35,16 +35,14 @@ class BlogController {
     static updatePost = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
         const { user } = req;
-
+        if (!user) throw new APIError('Authentication required', 401);
         const post = await Post.findById(id);
         if (!post) {
             throw new APIError('Post not found', 404);
         };
 
         //check if user is auther
-        if (post.author.toString() !== user?.id) {
-            throw new APIError('Not authorized to  update this post', 403);
-        };
+        if (!post.isAuthor(user.id)) throw new APIError('Not authorized', 403);
 
         const validatedData = UpdatePostSchema.parse(req.body);
 
@@ -65,15 +63,14 @@ class BlogController {
     static deletePost = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
         const { user } = req;
+        if (!user) throw new APIError('Authentication required', 401);
 
         const post = await Post.findById(id);
         if (!post) {
             throw new APIError('Post not found', 404);
         };
 
-        if (post.author.toString() !== user?.id) {
-            throw new APIError('Not authorized to delete this post', 403)
-        };
+        if (!post.isAuthor(user.id)) throw new APIError('Not authorized', 403);
 
         await post.deleteOne();
         logger.info(`Post ${id} deleted by user:${user.id}`);
@@ -85,8 +82,8 @@ class BlogController {
     });
 
     static getAllPosts = asyncHandler(async (req: Request, res: Response) => {
-        const page = parseInt(req.query.page as string) || 1;
-        const limit = parseInt(req.query.limit as string) || 10;
+        const page = Math.max(1, parseInt(req.query.page as string) || 1);
+        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10)); // Cap at 50
         const status = req.query.status as string || 'Published';
 
         const skip = (page - 1) * limit;
@@ -107,7 +104,7 @@ class BlogController {
                 pages: Math.ceil(total / limit),
                 total
             }
-        })
+        });
     });
 
 
@@ -149,6 +146,7 @@ class BlogController {
         const { user } = req;
 
         if (!user) throw new APIError('Authentication required', 401);
+
         const post = await Post.findById(id);
         if (!post) throw new APIError('Post not found', 404);
         await post.unlike(user.id);
@@ -161,7 +159,7 @@ class BlogController {
 
     static addComment = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
-        const { content } = req.body;
+        // const { content } = req.body;
         const { user } = req;
         if (!user) throw new APIError('Authentication required', 401);
 
@@ -170,9 +168,11 @@ class BlogController {
             throw new APIError('Post not found', 404);
         }
 
+        const validateComment = CommentInputSchema.parse(req.body)
+
         await post.addComment({
             user: user.id,
-            content
+            content: validateComment.content
         });
 
         res.json({
