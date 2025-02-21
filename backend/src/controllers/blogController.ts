@@ -78,7 +78,7 @@ class BlogController {
         await post.deleteOne();
         logger.info(`Post ${id} deleted by user:${user.id}`);
 
-         return createResposne(res, HttpStatus.OK, 'Post deleted successfully');
+        return createResposne(res, HttpStatus.OK, 'Post deleted successfully');
     });
 
     /**
