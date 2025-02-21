@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import { config } from "./config/environment";
 import Database from "./config/database";
 import authRoutes from "./routes/authRoutes";
+import blogRoutes from "./routes/blogRoutes"
 import { redis } from "./lib/redis";
 import { logger } from "./utils/logger";
 import { errorHandler } from "./utils/errorHandler"; // Ensure this import matches
@@ -44,6 +45,7 @@ class Server {
         });
 
         this.app.use(`${API_PREFIX}/auth`, authRoutes);
+        this.app.use(`${API_PREFIX}/blog`, blogRoutes)
         this.app.use(errorHandler); // Should now work with updated typing
     }
 
