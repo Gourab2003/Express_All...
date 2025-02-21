@@ -5,6 +5,7 @@ import { asyncHandler, APIError } from "../utils/errorHandler";
 import { logger } from "../utils/logger";
 
 class BlogController {
+    
     /**
      * Create a new blog post
      */
