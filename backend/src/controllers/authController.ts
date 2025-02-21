@@ -83,7 +83,7 @@ class AuthController {
             }
             const token = jwt.sign(
                 {
-                    id: user._id,
+                    id: user._id.toString(),
                     role: user.role
                 },
                 config.jwtSecret,

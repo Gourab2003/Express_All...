@@ -4,6 +4,7 @@ import Post from "../models/Blog.Schema";
 import { CreatePostSchema, UpdatePostSchema, CommentInputSchema } from "../interfaces/IBlog";
 import { asyncHandler, APIError } from "../utils/errorHandler";
 import { logger } from "../utils/logger";
+import { Types } from "mongoose";
 
 
 class BlogController {
@@ -19,9 +20,11 @@ class BlogController {
         //Validate request body
         const validatedData = CreatePostSchema.parse(req.body);
 
+        const authorId = new Types.ObjectId(user.id);
+
         const post = await Post.create({
             ...validatedData,
-            author: user.id
+            author: authorId
         });
 
         logger.info(`Post created with ID: ${post._id} by user: ${user.id}`);

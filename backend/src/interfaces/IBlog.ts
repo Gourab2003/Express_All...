@@ -1,12 +1,12 @@
-import {z} from 'zod';
+import { z } from 'zod';
 import { Types } from 'mongoose';
 
 /**
  * Custom Zod validation for MongoDB ObjectId
  */
 const ObjectId = z.string().refine(
-    (val)=> Types.ObjectId.isValid(val),
-    (val)=> ({message:`Invalid MongoDb ObjectId: ${val}` })
+    (val) => Types.ObjectId.isValid(val),
+    (val) => ({ message: `Invalid MongoDb ObjectId: ${val}` })
 )
 
 /**
@@ -42,7 +42,7 @@ export const PostSchema = z.object({
     slug: z.string().optional(),
     tags: z.array(z.string().min(1).max(20)).default(() => []),
     status: z.enum(['Draft', 'Published']).default("Draft"),
-    featuredImage: z.string().url().regex(/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/, "Must be a valid image URL").optional(),    excerpt: z.string().max(200, 'Excerpt cannot exceed 200 characters').optional(),
+    featuredImage: z.string().url().regex(/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/, "Must be a valid image URL").optional(), excerpt: z.string().max(200, 'Excerpt cannot exceed 200 characters').optional(),
     readingTime: z.number().int().nonnegative().optional(),
     likes: z.array(z.instanceof(Types.ObjectId)).default([]),
     comments: z.array(CommentSchema).default([]),
@@ -58,12 +58,15 @@ export const PostSchema = z.object({
  * Schema for creating a new post (excludes fields managed by the system)
  */
 
-export const CreatePostSchema = PostSchema.omit({
-    slug: true,
-    readingTime: true,
-    likes: true,
-    comments: true,
-    meta: true
+export const CreatePostSchema = z.object({
+    title: z.string()
+        .min(3, 'Title must be at least 3 characters')
+        .max(100, 'Title cannot exceed 100 characters'),
+    content: z.string()
+        .min(10, 'Content must be at least 10 characters'),
+    tags: z.array(z.string().min(1).max(20)).default(() => []),
+    status: z.enum(['Draft', 'Published']).default("Draft"),
+    featuredImage: z.string().url().regex(/^https?:\/\/.+\.(jpg|jpeg|png|gif)$/, "Must be a valid image URL").optional()
 });
 
 
