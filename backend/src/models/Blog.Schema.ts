@@ -11,7 +11,7 @@ interface IPostDocument extends IPost, Document {
     createdAt: Date;
     updatedAt: Date;
     addComment(comment: Omit<IComment, 'createdAt'>): Promise<void>;
-    incrementViews(): Promise<void>;
+    incrementViews(userId: string): Promise<void>;
     like(userId: string): Promise<void>;
     unlike(userId: string): Promise<void>;
     updateMeta(updates: Partial<IMeta>): Promise<void>;
@@ -120,7 +120,10 @@ const postSchema = new Schema<IPostDocument>({
         type: metaSchema,
         default: () => ({})
     },
-    viewedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }]
+    viewedBy: [{
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    }]
 }, {
     timestamps: true,
     toJSON: { virtuals: true },

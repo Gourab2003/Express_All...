@@ -50,7 +50,7 @@ export const PostSchema = z.object({
         views: z.number().int().nonnegative().default(0),
         shares: z.number().int().nonnegative().default(0)
     }).optional(),
-    viewedBy: z.array(z.string()).default([]),
+    viewedBy: z.array(z.instanceof(Types.ObjectId)).default([]),
 });
 
 

@@ -118,12 +118,11 @@ class BlogController {
 
     static getPostBySlug = asyncHandler(async (req: Request, res: Response) => {
         const { slug } = req.params;
-
+        const { user } = req; // Check for user to track views
         const post = await Post.findBySlug(slug);
-        if (!post) {
-            throw new APIError("Post not found", HttpStatus.NOT_FOUND);
-        };
-        await post.incrementViews();
+        if (!post) throw new APIError('Post not found', HttpStatus.NOT_FOUND);
+
+        // await post.incrementViews(user?.id); // Pass userId if present
         logger.debug(`Fetched post by slug`, { slug });
         return createResposne(res, HttpStatus.OK, 'Post fetched successfully', post);
     });
@@ -136,6 +135,8 @@ class BlogController {
 
         const post = await Post.findById(id);
         if (!post) throw new APIError('Post not found', HttpStatus.NOT_FOUND);
+
+        await post.incrementViews(user.id);
 
         await post.like(user.id);
         logger.debug(`Post liked`, { postId: id, userId: user.id });
@@ -168,7 +169,7 @@ class BlogController {
         }
 
         const validateComment = CommentInputSchema.parse(req.body)
-
+        await post.incrementViews(user.id);
         await post.addComment({
             user: user.id,
             content: validateComment.content
