@@ -119,7 +119,8 @@ const postSchema = new Schema<IPostDocument>({
     meta: {
         type: metaSchema,
         default: () => ({})
-    }
+    },
+    viewedBy: [{ type: Schema.Types.ObjectId, ref: 'User' }]
 }, {
     timestamps: true,
     toJSON: { virtuals: true },
@@ -177,11 +178,22 @@ postSchema.methods.addComment = async function (comment: Omit<IComment, 'created
 };
 
 
-postSchema.methods.incrementViews = async function () {
+postSchema.methods.incrementViews = async function (userId?: string) {
     try {
-        this.meta.views++;
-        await this.save({ timestamps: false }); // Prevent updating timestamps for view increments
-        logger.debug(`Incremented views for post ${this._id}`);
+        if (userId) {
+            const userObjectId = new Types.ObjectId(userId);
+            if (!this.viewedBy.some((id: Types.ObjectId) => id.equals(userObjectId))) {
+                this.meta.views++;
+                this.viewedBy.push(userObjectId);
+                logger.debug(`Incremented views for post ${this._id} by user ${userId}`);
+            } else {
+                logger.debug(`User ${userId} already viewed post ${this._id}, no increment`);
+            }
+        } else {
+            this.meta.views++; // For anonymous views (e.g., getPostBySlug without user)
+            logger.debug(`Incremented anonymous views for post ${this._id}`);
+        }
+        await this.save({ timestamps: false });
     } catch (error) {
         logger.error(`Failed to increment views for post ${this._id}:`, error);
         throw new APIError('Failed to increment views', 500);

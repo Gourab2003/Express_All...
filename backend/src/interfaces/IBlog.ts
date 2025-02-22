@@ -49,7 +49,8 @@ export const PostSchema = z.object({
     meta: z.object({
         views: z.number().int().nonnegative().default(0),
         shares: z.number().int().nonnegative().default(0)
-    }).optional()
+    }).optional(),
+    viewedBy: z.array(z.string()).default([]),
 });
 
 
