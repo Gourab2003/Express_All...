@@ -1,8 +1,18 @@
-import { Response } from "express";
+import { Response } from 'express';
 
+// HTTP status codes enum (assuming you have this)
+export enum HttpStatus {
+    OK = 200,
+    CREATED = 201,
+    NOT_FOUND = 404,
+    UNAUTHORIZED = 401,
+    FORBIDDEN = 403,
+    UNPROCESSABLE_ENTITY = 422,
+    INTERNAL_SERVER_ERROR = 500
+}
 
 interface ApiResponse {
-    status: 'Success' | 'Error';
+    status: 'success' | 'error';
     message: string;
     data?: any;
     pagination?: {
@@ -13,30 +23,19 @@ interface ApiResponse {
     };
 }
 
-export enum HttpStatus{
-    OK = 200,
-    CREATED = 201,  
-    NO_CONTENT = 204,
-    BAD_REQUEST = 400,
-    UNAUTHORIZED = 401,
-    FORBIDDEN = 403,
-    NOT_FOUND = 404,
-    CONFLICT = 409,
-    INTERNAL_SERVER_ERROR = 500
-}
-
-export const createResposne = (
+export const createResponse = (
     res: Response,
-    statusCode: HttpStatus,
+    statusCode: number,
     message: string,
     data?: any,
     pagination?: ApiResponse['pagination']
 ): Response => {
     const response: ApiResponse = {
-        status: statusCode >= 400 ? 'Success' : 'Error',
+        status: statusCode >= 400 ? 'error' : 'success',
         message,
         ...(data && { data }),
         ...(pagination && { pagination })
     };
+
     return res.status(statusCode).json(response);
-}
+};

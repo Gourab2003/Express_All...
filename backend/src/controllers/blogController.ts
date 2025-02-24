@@ -1,4 +1,4 @@
-import { createResposne, HttpStatus } from "./../utils/responseFormatter";
+import { createResponse, HttpStatus } from "./../utils/responseFormatter";
 import { Request, Response } from "express";
 import Post from "../models/Blog.Schema";
 import { CreatePostSchema, UpdatePostSchema, CommentInputSchema } from "../interfaces/IBlog";
@@ -29,7 +29,7 @@ class BlogController {
 
         logger.info(`Post created with ID: ${post._id} by user: ${user.id}`);
 
-        return createResposne(res, HttpStatus.CREATED, 'Post created successfully', post);
+        return createResponse(res, HttpStatus.CREATED, 'Post created successfully', post);
     });
 
     /**
@@ -58,7 +58,7 @@ class BlogController {
 
         logger.info(`Post ${id} updated by user: ${user.id}`);
 
-        return createResposne(res, HttpStatus.OK, 'Post updated successfully', updatedPost);
+        return createResponse(res, HttpStatus.OK, 'Post updated successfully', updatedPost);
     });
 
 
@@ -81,7 +81,7 @@ class BlogController {
         await post.deleteOne();
         logger.info(`Post ${id} deleted by user:${user.id}`);
 
-        return createResposne(res, HttpStatus.OK, 'Post deleted successfully');
+        return createResponse(res, HttpStatus.OK, 'Post deleted successfully');
     });
 
     /**
@@ -104,7 +104,7 @@ class BlogController {
         ]);
 
         logger.debug(`Fetched posts`, { page, limit, total });
-        return createResposne(res, HttpStatus.OK, 'Posts fetched successfully', posts, {
+        return createResponse(res, HttpStatus.OK, 'Posts fetched successfully', posts, {
             current: page,
             pages: Math.ceil(total / limit),
             total,
@@ -124,7 +124,7 @@ class BlogController {
 
         // await post.incrementViews(user?.id); // Pass userId if present
         logger.debug(`Fetched post by slug`, { slug });
-        return createResposne(res, HttpStatus.OK, 'Post fetched successfully', post);
+        return createResponse(res, HttpStatus.OK, 'Post fetched successfully', post);
     });
 
     static likePost = asyncHandler(async (req: Request, res: Response) => {
@@ -140,7 +140,7 @@ class BlogController {
 
         await post.like(user.id);
         logger.debug(`Post liked`, { postId: id, userId: user.id });
-        return createResposne(res, HttpStatus.OK, 'Post liked successfully');
+        return createResponse(res, HttpStatus.OK, 'Post liked successfully');
     });
 
     static unlikePost = asyncHandler(async (req: Request, res: Response) => {
@@ -153,7 +153,7 @@ class BlogController {
         if (!post) throw new APIError('Post not found', HttpStatus.NOT_FOUND);
         await post.unlike(user.id);
         logger.debug(`Post unliked`, { postId: id, userId: user.id });
-        return createResposne(res, HttpStatus.OK, 'Post unliked successfully');
+        return createResponse(res, HttpStatus.OK, 'Post unliked successfully');
     });
 
 
@@ -176,7 +176,7 @@ class BlogController {
         });
 
         logger.debug(`Comment added`, { postId: id, userId: user.id });
-        return createResposne(res, HttpStatus.CREATED, 'Comment added successfully');
+        return createResponse(res, HttpStatus.CREATED, 'Comment added successfully');
     });
 }
 
