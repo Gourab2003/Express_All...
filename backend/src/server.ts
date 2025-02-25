@@ -4,11 +4,10 @@ import cookieParser from 'cookie-parser';
 import { config } from "./config/environment";
 import Database from "./config/database";
 import authRoutes from "./routes/authRoutes";
-import blogRoutes from "./routes/blogRoutes"
-import { redis } from "./lib/redis";
+import blogRoutes from "./routes/blogRoutes";
+import { redis, RedisConnection } from "./lib/redis";
 import { logger } from "./utils/logger";
-import { errorHandler } from "./utils/errorHandler"; // Ensure this import matches
-import { cleanup } from "./lib/queue";
+import { errorHandler } from "./utils/errorHandler";
 
 const API_PREFIX = '/api/v1';
 
@@ -18,7 +17,7 @@ class Server {
     constructor() {
         this.app = express();
         this.configure();
-        this.connectDatabase();
+        this.initialize();
     }
 
     private configure() {
@@ -45,8 +44,20 @@ class Server {
         });
 
         this.app.use(`${API_PREFIX}/auth`, authRoutes);
-        this.app.use(`${API_PREFIX}/blog`, blogRoutes)
-        this.app.use(errorHandler); // Should now work with updated typing
+        this.app.use(`${API_PREFIX}/blog`, blogRoutes);
+        this.app.use(errorHandler);
+    }
+
+    private async initialize() {
+        try {
+            await this.connectDatabase();
+            logger.info("Initializing Redis connection...");
+            await RedisConnection.waitForConnection();
+            logger.info("Redis connection established");
+        } catch (error) {
+            logger.error("Initialization failed:", error);
+            process.exit(1);
+        }
     }
 
     private async connectDatabase() {
@@ -55,7 +66,7 @@ class Server {
             logger.info("Database connection established");
         } catch (error) {
             logger.error("Failed to connect to database:", error);
-            process.exit(1);
+            throw error;
         }
     }
 
@@ -72,10 +83,14 @@ class Server {
 
     private async shutdown(server: any) {
         logger.info('Shutting down server...');
-        await cleanup();
-        await Database.disconnect();
+        try {
+            await Database.disconnect();
+            logger.info("Database disconnected");
+        } catch (error) {
+            logger.error("Error disconnecting from database:", error);
+        }
         server.close(() => {
-            logger.info('Server stopped');
+            logger.info('HTTP server stopped');
             process.exit(0);
         });
     }

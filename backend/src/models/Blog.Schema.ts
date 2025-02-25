@@ -1,7 +1,6 @@
 import mongoose, { Document, Schema, Model, Types } from "mongoose";
 import { IPost, IComment, IMeta } from "../interfaces/IBlog"
 import slugify from "slugify";
-import { addSummarizationJob } from "../lib/queue";
 import { logger } from "../utils/logger";
 import { APIError } from "../utils/errorHandler";
 
@@ -105,7 +104,8 @@ const postSchema = new Schema<IPostDocument>({
     },
     excerpt: {
         type: String,
-        maxLength: 100
+        maxLength: 100,
+        optional: true
     },
     readingTime: {
         type: Number,
@@ -152,14 +152,7 @@ postSchema.pre<IPostDocument>('save', async function (next) {
         if (this.isModified('content')) {
             const wordCount = this.content.split(/\s+/).length;
             this.readingTime = Math.ceil(wordCount / 200);
-
-            const oldWordCount = this.isNew ? 0 : (this.content.split(/\s+/).length || 0);
-            const shouldReSummarize = Math.abs(wordCount - oldWordCount) > 50; // Threshold for re-summarization
-
-            if (!this.excerpt || shouldReSummarize) {
-                await addSummarizationJob(this._id.toString(), this.content);
-                logger.info(`Scheduled summarization job for post ${this._id}`);
-            }
+            logger.debug(`Calculated reading time: ${this.readingTime}`);
         }
         next();
     } catch (error) {
