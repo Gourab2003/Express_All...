@@ -1,3 +1,4 @@
+import { redis } from "./../lib/redis";
 import { createResponse, HttpStatus } from "./../utils/responseFormatter";
 import { Request, Response } from "express";
 import Post from "../models/Blog.Schema";
@@ -93,6 +94,15 @@ class BlogController {
         const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 10));
         const status = (req.query.status as string) || 'Published';
         const skip = (page - 1) * limit;
+        const cacheKey = `posts:${status}:${page}:${limit}`;
+
+        //!Cache check
+
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+            logger.debug(`Cache hit for ${cacheKey}`);
+            return createResponse(res, HttpStatus.OK, 'Posts fetched successfully', JSON.parse(cached).data, JSON.parse(cached).pagination);
+        }
 
         const [posts, total] = await Promise.all([
             Post.find({ status })
@@ -103,13 +113,21 @@ class BlogController {
             Post.countDocuments({ status })
         ]);
 
+        const responseData = {
+            data: posts,
+            pagination: {
+                current: page,
+                pages: Math.ceil(total / limit),
+                total,
+                limit
+            }
+        }
+
+        await redis.setex(cacheKey, 600, JSON.stringify(responseData));
+        logger.debug(`Cache set for ${cacheKey}`);
+
         logger.debug(`Fetched posts`, { page, limit, total });
-        return createResponse(res, HttpStatus.OK, 'Posts fetched successfully', posts, {
-            current: page,
-            pages: Math.ceil(total / limit),
-            total,
-            limit
-        });
+        return createResponse(res, HttpStatus.OK, 'Posts fetched successfully', posts, responseData.pagination);
     });
 
     /**
