@@ -44,6 +44,6 @@ export const config: Config = {
     REDIS_PASSWORD: process.env.REDIS_PASSWORD || 'V1jsaxDPKXxP6ytdLzj2ZJ1RBLl4kXb9',
     REDIS_HOST: process.env.REDIS_HOST || 'redis-17188.crce182.ap-south-1-1.ec2.redns.redis-cloud.com',
     REDIS_PORT: parseInt(process.env.REDIS_PORT || '17188', 10),
-    LOG_DIR: process.env.LOG_DIR || path.join(__dirname, '..', 'logs'), // Now works in ESM
+    LOG_DIR: process.env.LOG_DIR || path.join(__dirname, '..', 'logs'),
     REDIS_TIMEOUT: parseInt(process.env.REDIS_TIMEOUT || '10000', 10)
 };
