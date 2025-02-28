@@ -35,3 +35,4 @@ export interface PostResponse {
     data: Post[];
     pagination?: PaginationData;
 }
+
