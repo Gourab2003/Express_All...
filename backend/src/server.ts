@@ -21,7 +21,9 @@ class Server {
     }
 
     private configure() {
-        this.app.use(CORS());
+        this.app.use(CORS({
+            origin:[config.corsOrigin]
+        }));
         this.app.use(express.json());
         this.app.use(express.urlencoded({ extended: true }));
         this.app.use(cookieParser());
