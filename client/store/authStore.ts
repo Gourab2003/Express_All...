@@ -40,9 +40,8 @@ const useAuthStore = create<AuthState>()(
             register: async (credentials) => {
                 set({ isLoading: true, error: null });
                 try {
-                    const response = await api.post('/auth/register', credentials);
-                    const { user, token } = response.data.data;
-                    set({ user, token, isLoggedIn: true, isLoading: false });
+                    await api.post('/auth/register', credentials);
+                    set({ isLoading: false });
                 } catch (error: any) {
                     const message = error.response?.data?.message || 'Registration failed';
                     set({ error: message, isLoading: false });
