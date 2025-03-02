@@ -22,7 +22,8 @@ class Server {
 
     private configure() {
         this.app.use(CORS({
-            origin:[config.corsOrigin]
+            origin: [config.corsOrigin],
+            credentials: true
         }));
         this.app.use(express.json());
         this.app.use(express.urlencoded({ extended: true }));
