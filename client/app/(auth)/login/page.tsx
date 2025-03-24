@@ -22,18 +22,22 @@ export default function LoginPage() {
 
     if (user) {
         return (
-            <div className="container mx-auto p-4 text-center">
-                <p className="text-green-600">Logged in as {user.email}</p>
-                <Link href="/" className="text-blue-500 hover:underline">Go to Homepage</Link>
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <p className="text-green-600 text-lg font-semibold">Logged in as {user.email}</p>
+                    <Link href="/" className="text-blue-600 hover:underline">
+                        Go to Homepage
+                    </Link>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-            <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-xl">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
+            <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-lg border border-gray-200">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800">Welcome back</h1>
+                    <h1 className="text-3xl font-bold text-gray-800">Welcome Back</h1>
                     <p className="text-gray-600 mt-2">Sign in to your account</p>
                 </div>
                 <LoginForm onSubmit={handleLogin} loading={isLoading} error={formError} />

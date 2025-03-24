@@ -1,5 +1,7 @@
-import './globals.css'; // Must be here
+import './globals.css';
 import { ReactNode } from 'react';
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
 
 export const metadata = {
     title: 'My Blog',
@@ -9,7 +11,11 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
     return (
         <html lang="en">
-            <body className="bg-gray-100 min-h-screen">{children}</body>
+            <body className="flex flex-col min-h-screen">
+                <Header />
+                <main className="flex-grow container mx-auto p-4">{children}</main>
+                <Footer />
+            </body>
         </html>
     );
 }
