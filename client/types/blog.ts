@@ -13,6 +13,7 @@ export interface Post {
     comments: Comment[];
     createdAt: string;
     updatedAt: string; // Fixed typo
+    featuredImage?: string; // ✅ Added this line
 }
 
 export interface Comment {
